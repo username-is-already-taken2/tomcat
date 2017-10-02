@@ -1,0 +1,3 @@
+# Disabling due to it being a pita on windows
+Layout/EndOfLine:
+  Enabled: false

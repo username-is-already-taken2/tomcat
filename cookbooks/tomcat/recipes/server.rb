@@ -17,12 +17,14 @@ group 'tomcat' do
   action :create
 end
 
-remote_file '/tmp/apache-tomcat-8.0.46.tar.gz' do
+remote_file 'apache-tomcat.tar.gz' do
+  path "#{Chef::Config[:file_cache_path]}/apache-tomcat-8.0.46.tar.gz"
   source 'http://apache.mirrors.nublue.co.uk/tomcat/tomcat-8/v8.0.46/bin/apache-tomcat-8.0.46.tar.gz'
   action :create
 end
 
-remote_file '/tmp/sample.war' do
+remote_file 'sample.war' do
+  path "#{Chef::Config[:file_cache_path]}/sample.war"
   source 'https://raw.githubusercontent.com/johnfitzpatrick/certification-workshops/master/Tomcat/sample.war'
   action :create
 end
@@ -33,7 +35,7 @@ end
 
 bash 'untar the archive' do
   code <<-EOH
-  tar -zxvf /tmp/apache-tomcat-8.0.46.tar.gz -C /opt/tomcat --strip-components=1
+  tar -zxvf #{Chef::Config[:file_cache_path]}/apache-tomcat-8.0.46.tar.gz -C /opt/tomcat --strip-components=1
   EOH
   action :run
   not_if { ::File.exist?('/opt/tomcat/LICENSE') }
@@ -81,5 +83,23 @@ execute 'daemon-reload' do
 end
 
 service 'tomcat' do
+  action :nothing
+end
+
+template '/opt/tomcat/conf/server.xml' do
+  source 'server.xml.erb'
+  owner 'root'
+  group 'tomcat'
+  mode '0640'
+  action :create
+  notifies :restart, 'service[tomcat]', :immediately
+  notifies :run, 'execute[add-firewall-port]', :immediately
+  variables(
+    TOMCAT_PORT: node['tomcat']['tomcat-port']
+  )
+end
+
+execute 'add-firewall-port' do
+  command "firewall-cmd --add-port #{node['tomcat']['tomcat-port']}/tcp"
   action :nothing
 end
